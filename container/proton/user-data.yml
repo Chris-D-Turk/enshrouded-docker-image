@@ -28,6 +28,13 @@ write_files:
     echo "system shutdown now!"
     shutdown -h now
 
+bootcmd:
+- sysctl vm.disk_based_swap=1
+- fallocate -l 2G /var/swapfile
+- chmod 600 /var/swapfile
+- mkswap /var/swapfile
+- swapon /var/swapfile
+
 runcmd:
 - systemctl daemon-reload
 - systemctl start enshrouded-server.service
