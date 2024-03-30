@@ -1,0 +1,33 @@
+#cloud-config
+
+write_files:
+- path: /etc/systemd/system/enshrouded-server.service
+  permissions: 0644
+  owner: root
+  content: |
+    [Unit]
+    Description=Run enshrouded-server-proton
+    After=docker.service
+    Requires=docker.service
+
+    [Service]
+    ExecStart=bash /etc/systemd/system/enshrouded-server.sh
+    ExecStop=docker stop enshrouded-server-proton
+
+    [Install]
+    WantedBy=multi-user.target
+
+- path: /etc/systemd/system/enshrouded-server.sh
+  owner: root
+  content: |
+    docker start enshrouded-server-proton
+    docker logs -f enshrouded-server-proton
+    sleep 1 # this will receive the interrupt signal and prevent the following output if the service is manually stopped
+    echo "enshrouded-server-proton stopped -> system shutdown in 1 min! // cancel shutdown using: sudo systemctl stop enshrouded-server.service"
+    sleep 60
+    echo "system shutdown now!"
+    shutdown -h now
+
+runcmd:
+- systemctl daemon-reload
+- systemctl start enshrouded-server.service

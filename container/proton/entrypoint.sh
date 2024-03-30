@@ -5,6 +5,11 @@ timestamp () {
   date +"%Y-%m-%d %H:%M:%S,%3N"
 }
 
+handle_interrupt() {
+    echo "$(timestamp) INFO: Received interrupt signal"
+}
+
+source enshrouded-server-env.sh
 # Validate arguments
 if [ -z "$SERVER_NAME" ]; then
     SERVER_NAME='Enshrouded Containerized'
@@ -36,9 +41,11 @@ if [ -z "$SERVER_IP" ]; then
     echo "$(timestamp) WARN: SERVER_IP not set, using default: 0.0.0.0"
 fi
 
+trap "handle_interrupt" INT TERM
+
 # Install/Update Enshrouded
 echo "$(timestamp) INFO: Updating Enshrouded Dedicated Server"
-steamcmd +@sSteamCmdForcePlatformType windows +force_install_dir "$ENSHROUDED_PATH" +login anonymous +app_update ${STEAM_APP_ID} validate +quit
+steamcmd +@sSteamCmdForcePlatformType windows +force_install_dir "$ENSHROUDED_PATH" +login anonymous +app_update ${STEAM_APP_ID} +quit
 
 # Check that steamcmd was successful
 if [ $? != 0 ]; then
@@ -88,31 +95,35 @@ if ! [ -f "${ENSHROUDED_PATH}/logs/enshrouded_server.log" ]; then
 fi
 
 # Link logfile to stdout of pid 1 so we can see logs
-ln -sf /proc/1/fd/1 "${ENSHROUDED_PATH}/logs/enshrouded_server.log"
+# ln -sf /proc/1/fd/1 "${ENSHROUDED_PATH}/logs/enshrouded_server.log"
+
+echo "$(timestamp) INFO: Initialising noip.com DynDNS..."
+noip-duc -g all.ddnskey.com --username $NOIP_USER --password $NOIP_PWD &
 
 # Launch Enshrouded
 echo "$(timestamp) INFO: Starting Enshrouded Dedicated Server"
 
 ${STEAM_PATH}/compatibilitytools.d/GE-Proton${GE_PROTON_VERSION}/proton run ${ENSHROUDED_PATH}/enshrouded_server.exe &
+tail -F "${ENSHROUDED_PATH}/logs/enshrouded_server.log" & tail_pid=$!
+bash idlekiller.sh $$ $MAX_IDLE_MINUTES &
+wait
 
-# Find pid for enshrouded_server.exe
-timeout=0
-while [ $timeout -lt 11 ]; do
-    if ps -e | grep "enshrouded_serv"; then
-        enshrouded_pid=$(ps -e | grep "enshrouded_serv" | awk '{print $1}')
-        break
-    elif [ $timeout -eq 10 ]; then
-        echo "$(timestamp) ERROR: Timed out waiting for enshrouded_server.exe to be running"
-        exit 1
-    fi
-    sleep 6
-    ((timeout++))
-    echo "$(timestamp) INFO: Waiting for enshrouded_server.exe to be running"
-done
+echo "$(timestamp) INFO: Stopping server..."
+enshrouded_pid=$(ps -e | grep "enshrouded_serv" | awk '{print $1}')
+kill -s INT $enshrouded_pid # enshrouded can't handle SIGTERM!
+tail --pid=$enshrouded_pid -f /dev/null # I don't love this but I can't use `wait` because it's not a child of our shell
 
-# I don't love this but I can't use `wait` because it's not a child of our shell
-tail --pid=$enshrouded_pid -f /dev/null
+echo "$(timestamp) INFO: Stopping tail..."
+kill -s TERM $tail_pid
+wait $tail_pid
 
-# If we lose our pid, exit container
-echo "$(timestamp) ERROR: He's dead, Jim"
-exit 1
+if [ ! -z "$BACKUP_REMOTE_DIR" ]; then
+    echo "$(timestamp) INFO: Performing savegame backup..."
+    backupdate=$(date "+%Y.%m.%d_%H.%M.%S")
+    backupzip="$ENSHROUDED_PATH/savegame.$backupdate.zip"
+    zip -r $backupzip $ENSHROUDED_PATH/savegame
+    mega-login $MEGA_USER $MEGA_PWD
+    mega-put "$backupzip" $BACKUP_REMOTE_DIR
+fi
+
+echo "$(timestamp) INFO: Goodbye"

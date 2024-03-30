@@ -34,6 +34,15 @@ RUN groupadd -g $CONTAINER_GID steam \
         locales \
         lib32gcc-s1 \
         steamcmd \
+        zip \
+        vim \
+        nodejs \
+        npm \
+    && wget https://mega.nz/linux/repo/Debian_12/amd64/megacmd-Debian_12_amd64.deb \
+    && apt install "$PWD/megacmd-Debian_12_amd64.deb" -y \
+    && wget https://dmej8g5cpdyqd.cloudfront.net/downloads/noip-duc_3.0.0.tar.gz \
+    && tar xf noip-duc_3.0.0.tar.gz \
+    && apt install ./noip-duc_3.0.0/binaries/noip-duc_3.0.0_amd64.deb \
     && ln -s /usr/games/steamcmd /usr/bin/steamcmd \
     && echo 'LANG="en_US.UTF-8"' > /etc/default/locale \
     && echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
@@ -42,9 +51,14 @@ RUN groupadd -g $CONTAINER_GID steam \
     && dbus-uuidgen --ensure=/etc/machine-id \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean \
-    && apt-get autoremove -y 
+    && apt-get autoremove -y
+
+RUN mkdir "$HOME/.npm" \
+    && chown -R 10000:10000 "$HOME/.npm"
 
 USER steam
+
+# RUN steamcmd +@sSteamCmdForcePlatformType windows +force_install_dir "$ENSHROUDED_PATH" +login anonymous +app_update ${STEAM_APP_ID} validate +quit
 
 RUN mkdir "$ENSHROUDED_PATH" \
     && mkdir -p "${ENSHROUDED_PATH}/savegame" \
@@ -60,9 +74,16 @@ RUN mkdir "$ENSHROUDED_PATH" \
     && tar -x -C "${STEAM_PATH}/compatibilitytools.d/" -f "/home/steam/GE-Proton${GE_PROTON_VERSION}.tgz" \
     && rm "/home/steam/GE-Proton${GE_PROTON_VERSION}.tgz"
     
-COPY entrypoint.sh /home/steam/entrypoint.sh
-COPY enshrouded_server_example.json /home/steam/enshrouded_server_example.json
+COPY entrypoint.sh "$HOME/entrypoint.sh"
+COPY enshrouded-server-env.sh "$HOME/enshrouded-server-env.sh"
+COPY idlekiller.sh "$HOME/idlekiller.sh"
+COPY enshrouded_server_example.json "$HOME/enshrouded_server_example.json"
 
-WORKDIR /home/steam
+RUN mkdir "$HOME/playercount" \
+    && cd "$HOME/playercount" \
+    && npm install gamedig 
+COPY playercount.js "$HOME/playercount/playercount.js"
+
+WORKDIR $HOME
 
 CMD ["/home/steam/entrypoint.sh"]
