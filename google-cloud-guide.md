@@ -23,7 +23,7 @@ You can also select a bigger configuration, as your first 90 days are free nonet
 **Note:** You can upgrade the machine type anytime, if the VM runs low on resources (see [Changing the machine type of a VM instance](https://cloud.google.com/compute/docs/instances/changing-machine-type-of-stopped-instance))
 - Select "Container-Optimized OS" / 40 GB as Boot Disk
 - Enter the Network tag "enshrouded" under "Networking"
-- Under "Metadata" add a new entry with key "user-data" and add the contents of user-data.yml as value  
+- Under "Metadata" add a new entry with key "user-data" and add the contents of `container\proton\user-data.yml` as value  
 This script will install a systemd service that automatically starts the docker container on system boot.  
 Note that this systemd service will also shutdown the VM when the dedicated server stops. You can disable this by removing the `shutdown -h now` from the script
 - Optional: Select "Spot" as VM provisioning model (this reduces costs by allowing Google to stop your VM when the Cloud platform needs compute resources)
@@ -103,7 +103,7 @@ docker run \
 ```
 The docker should appear as running: `docker ps -a`  
 The Enshrouded Dedicated Server will be installed using SteamCMD on first boot - you can monitor the progress using: `docker logs -f enshrouded-server-proton`  
-When this is done, you should be able to connect to the server using the public IP (see VM instances) 
+When this is done, you should be able to connect to the server using the VM's public IP (see [VM instances](https://console.cloud.google.com/compute/instances)) 
 
 ## Optional: Upload your existing savegame
 - Stop the server: `systemctl stop enshrouded-server`
