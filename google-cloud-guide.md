@@ -23,7 +23,7 @@ You can also select a bigger configuration, as your first 90 days are free nonet
 **Note:** You can upgrade the machine type anytime, if the VM runs low on resources (see [Changing the machine type of a VM instance](https://cloud.google.com/compute/docs/instances/changing-machine-type-of-stopped-instance))
 - Select "Container-Optimized OS" / 40 GB as Boot Disk
 - Enter the Network tag "enshrouded" under "Networking"
-- Under "Metadata" add a new entry with key "user-data" and add the contents of `container\proton\user-data.yml` as value  
+- Under "Metadata" add a new entry with key "user-data" and add the contents of [user-data.yml](container/proton/user-data.yml) as value  
 This script will install a systemd service that automatically starts the docker container on system boot.  
 Note that this systemd service will also shutdown the VM when the dedicated server stops. You can disable this by removing the `shutdown -h now` from the script
 - Optional: Select "Spot" as VM provisioning model (this reduces costs by allowing Google to stop your VM when the Cloud platform needs compute resources)
@@ -64,7 +64,7 @@ You can skip this step, if you don't want the server to automatically backup you
 - Goto https://mega.nz/ and create new account (20GB free space)
 
 ## Optional: Schedule Start/Stop
-The entrypoint.sh script automatically performs a savegame backup on shutdown.
+The [entrypoint.sh](container/proton/entrypoint.sh) script automatically performs a savegame backup on shutdown.
 So to perform a backup at least once a day, you should schedule an automatic shutdown.  
 You can skip this step, if you don't want automatic backups and want the VM to run 24/7 (ok during the free trial)
 
@@ -121,4 +121,4 @@ Useful commands:
 - start the systemd service: `systemctl start enshrouded-server`
 - stop the systemd service: `systemctl stop enshrouded-server`
 - check the logs: `docker logs -f enshrouded-server-proton`
-- open a shell in the running container (to update the enshrouded-server-env.sh for example): `docker exec -it enshrouded-server-proton bash`
+- open a shell in the running container (to update the [enshrouded-server-env.sh](container/proton/enshrouded-server-env.sh) for example): `docker exec -it enshrouded-server-proton bash`
